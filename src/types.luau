@@ -57,7 +57,7 @@ export type Session<T> = {
     --- Binds a function to whenever the session receives updated data.
     --- This should be reconciled into your own game state. When called, it will
     --- run the function given immediately.
-    updated: (Session<T>, (T) -> ()) -> (),
+    updated: (Session<T>, (T, UpdateType) -> ()) -> (),
     --- Stops polling the datastore for data, and disables any patching. This
     --- performs one more save. Releases the lock if it was locked.
     stop: (Session<T>) -> (),
@@ -97,5 +97,7 @@ export type StoredData<T> = {
     migrations_performed: { string },
     data: T
 }
+
+export type UpdateType = "from_cache" | "default_data" | "from_source"
 
 return {}

@@ -25,6 +25,7 @@ type TransactionId = types.TransactionId
 type TransactionInfo = types.TransactionInfo
 type TransactionAction = types.TransactionAction
 type TransactionData = types.TransactionData
+type UpdateTypes = types.UpdateType
 
 local function migrate<T>(session: Session<T>, stored: StoredData<T>)
     local migrations = session._options.migrations
@@ -60,12 +61,12 @@ local function create_migrations_table(session: Session<any>)
     return migrations
 end
 
-local function run_updated<T>(session: Session<T>)
+local function run_updated<T>(session: Session<T>, source: UpdateTypes)
     local data = session._cached.data
     local fn = session._updated
     local copy = util.deep_freeze(util.clone(data))
 
-    return fn(copy)
+    return fn(copy, source)
 end
 
 local function update<T>(
@@ -148,7 +149,7 @@ local function pull_auto<T>(session: Session<T>, transactions: { [TransactionId]
 
     session._cached = result
     LOG(`{session._name} calling updated -`, debug.info(session._updated, "sl"))
-    run_updated(session)
+    run_updated(session, "from_source")
 end
 
 local function force_pull<T>(session: Session<T>)
@@ -167,7 +168,7 @@ local function force_pull<T>(session: Session<T>)
     session._next_save_opportunity = AUTOSAVE_DELAY
     session._cached = result
     LOG(`{session._name} calling updated on force`, debug.info(session._updated, "sl"))
-    run_updated(session)
+    run_updated(session, "from_source")
 end
 
 local function thread<T>(session: Session<T>)
@@ -226,11 +227,11 @@ local function patch_regular<T, U...>(session: Session<T>, fn: Action<T, U...>, 
 
         table.insert(session._changes, actions.create_record(fn, ...) )
         session._cached.data = a
-        run_updated(session)
+        run_updated(session, "from_cache")
     else
         table.insert(session._changes, actions.create_record(fn, ...) )
         session._cached.data = fn(session._cached.data, ...)
-        run_updated(session)
+        run_updated(session, "from_cache")
     end
 end
 
@@ -243,11 +244,11 @@ local function patch<T, U...>(session: Session<T>, fn: Action<T, U...>, ...: U..
     end
 end
 
-local function updated<T>(session: Session<T>, new: (data: T) -> ())
+local function updated<T>(session: Session<T>, new: (data: T, source: UpdateTypes) -> ())
     if coroutine.status(session._thread) == "dead" then error("thread is dead") end
     session._updated = new
     LOG(`{session._name} calling updated register`, debug.info(new, "sl"))
-    run_updated(session)
+    run_updated(session, "default_data")
 end
 
 local function stop<T>(session: Session<T>)
