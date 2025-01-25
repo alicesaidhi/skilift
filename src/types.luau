@@ -42,7 +42,7 @@ export type Session<T> = {
     --- When the next refresh happens.
     _next_save_opportunity: number,
     --- Runs to reconcile the Datastores into the data.
-    _updated: (T) -> (),
+    _updated: (T, UpdateType) -> (),
     --- The currently stored data.
     _cached: StoredData<T>,
     --- The thread responsible for autosaving.
