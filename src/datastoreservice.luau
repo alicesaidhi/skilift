@@ -1,3 +1,3 @@
-local flags = require(script.Parent.flags)
+local flags = require("./flags")
 
 return flags.datastoreservice

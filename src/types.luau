@@ -64,7 +64,7 @@ export type Session<T> = {
         datastore: DataStore,
         options: StoreOptions<T>,
         --- A list of changes that haven't been pushed yet.
-        changes: { Action },
+        changes: { { Action & any } },
         --- When the next refresh happens.
         next_save_opportunity: number,
         --- Runs to reconcile the Datastores into the data.
@@ -108,15 +108,6 @@ export type Session<T> = {
     --- Yields until the next pull happens
     await: (Session<T>) -> (),
 
-    -- ---- SESSION LOCKING ADDENDUM ----
-    -- --- Locks data. This should only be used in cases where session locking is
-    -- --- required. When sesion locking, other servers are unable to edit the data.
-    -- --- This may error.
-    -- lock: (Session<T>, expires: number) -> (),
-    -- --- Steals a session from another server (if necessary) 
-    -- steal: (Session<T>) -> (),
-    -- --- Unlocks the session, allowing other servers to edit the data.
-    -- unlock: (Session<T>) -> (),
 }
 
 export type TransactionId = string

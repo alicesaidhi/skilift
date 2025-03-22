@@ -7,11 +7,11 @@ local flags = require("./flags")
 type StoreOptions<T> = types.StoreOptions<T>
 type Store<T> = types.Store<T>
 
-local function add_action<T>(self: Store<T>, name, action)
-    if not action then action = name; name = nil end
-    if name then actions.register_transaction_action(self, action, name) else actions.register_action(self, action) end
-    return action
-end
+-- local function add_action<T>(self: Store<T>, name, action)
+--     if not action then action = name; name = nil end
+--     if name then actions.register_transaction_action(self, action, name) else actions.register_action(self, action) end
+--     return action
+-- end
 
 local function get_store<T>(options: StoreOptions<T>): Store<T>
     local store = {

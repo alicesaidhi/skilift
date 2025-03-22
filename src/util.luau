@@ -8,7 +8,7 @@ local function clone<T>(x: T): T
             end
         end
 
-        return t
+        return t :: never
     else
         return x
     end    
@@ -70,7 +70,7 @@ local function check_table_type(x: { [string | number]: any }): "dict" | "array"
 end
 
 local references = setmetatable({}, {__mode = "ks"})
-local function check_json(x: {}, ...: string | number): boolean
+local function check_json<T>(x: T, ...: string | number): boolean
     if typeof(x) == "string" then
         return true
     elseif typeof(x) == "number" then
@@ -105,8 +105,8 @@ local function check_json(x: {}, ...: string | number): boolean
     end
 end
 
-local function check_json_valid(x: {})
-    table.clear(references)
+local function check_json_valid<T>(x: T)
+    table.clear(references :: never)
     return check_json(x, "root")
 end
 

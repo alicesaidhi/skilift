@@ -1,6 +1,5 @@
 local flags = require("./flags")
 local guid = require("./guid")
-local flags = require("./flags")
 local types = require("./types")
 local Session = require("./session")
 local budget = require("./budget")
@@ -11,12 +10,12 @@ local actions = require("./actions")
 local TRANSACTION_NAME = "_$SKILIFT_TRANSACTION"
 local TRANSACTION_SCOPE = "global"
 
+type Session<T> = types.Session<T>
+type Store<T> = types.Store<T>
+type TransactionAction = types.TransactionAction
 type TransactionInfo = types.TransactionInfo
 type TransactionId = types.TransactionId
 
-local function escape_transaction()
-
-end
 
 local function create_transaction(success: (() -> ()), failure: (() -> ())?)
     local TRANSACTION_STORE = flags.datastoreservice:GetDataStore(TRANSACTION_NAME, TRANSACTION_SCOPE)
@@ -63,37 +62,37 @@ local function create_transaction(success: (() -> ()), failure: (() -> ())?)
     budget.delay_until_meets_budget("update", total + 6)
 
     -- each session needs to be manually pulled
-    local success, failed = 0, 0
+    local finished, failed = 0, 0
     for session, info in transaction_info.sessions do
-        LOG(`{uuid}: Pulling {session._name}`)
+        LOG(`{uuid}: Pulling {session.name}`)
         task.spawn(function()
-            local ok = pcall(Session.pull_auto, session, { [uuid] = info })
+            local ok = pcall(Session.pull_auto, (session :: Session<any>), { [uuid] = info })
             LOG(`{uuid}: STATUS {if ok then "SUCCESS" else "FAIL"}`)
             if ok == false then
                 failed += 1
             end
-            if ok == true then success += 1 end
+            if ok == true then finished += 1 end
         end) 
     end
     
-    while success < total and failed == 0 do
+    while finished < total and failed == 0 do
         task.wait() -- yield until all threads finished
     end
     LOG(`{uuid}: TOTAL {total}, SUCCESS {success}, FAIL {failed}`)
 
-    if success == total then
+    if finished == total then
         -- everything has been saved, we can now mark the transaction as finished
-        local ok, err = pcall(function()
+        local ok = pcall(function()
             budget.delay_until_meets_budget("set", 1)
             TRANSACTION_STORE:SetAsync(uuid, true)
         end)
         LOG(`{uuid}: WRITTEN TO KEY STATUS {if ok then "SUCCESS" else "FAIL"}`)
 
         for session, info in transaction_info.sessions do
-            LOG(`{uuid}: Pulling {session._name}`)
-            for _, action in (if ok == true then info.success else info.failure) do
-                local fn = actions.obtain_transaction_action(session._.store, action.fn)
-                Session.commit_transaction_early(session, fn, unpack(action.values))
+            LOG(`{uuid}: Pulling {session.name}`)
+            for _, action in (if ok == true then info.success else info.failure) :: { TransactionAction } do
+                local fn = actions.obtain_transaction_action((session._.store :: Store<any>), action.fn)
+                Session.commit_transaction_early((session :: Session<any>), fn, unpack(action.values))
             end
         end
         
@@ -101,10 +100,10 @@ local function create_transaction(success: (() -> ()), failure: (() -> ())?)
     else
         -- now that the transaction is done, we can pull all data again
         for session, info in transaction_info.sessions do
-            LOG(`{uuid}: Pulling {session._name}`)
+            LOG(`{uuid}: Pulling {session.name}`)
             for _, action in info.failure do
-                local fn = actions.obtain_transaction_action(session._.store, action.fn)
-                Session.commit_transaction_early(session, fn, unpack(action.values))
+                local fn = actions.obtain_transaction_action((session._.store :: Store<any>), action.fn)
+                Session.commit_transaction_early((session :: Session<any>), fn, unpack(action.values))
             end
         end
 
