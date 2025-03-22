@@ -10,6 +10,8 @@ local actions = require("./actions")
 local TRANSACTION_NAME = "_$SKILIFT_TRANSACTION"
 local TRANSACTION_SCOPE = "global"
 
+type Session<T> = types.Session<T>
+type Store<T> = types.Store<T>
 type TransactionAction = types.TransactionAction
 type TransactionInfo = types.TransactionInfo
 type TransactionId = types.TransactionId
@@ -64,7 +66,7 @@ local function create_transaction(success: (() -> ()), failure: (() -> ())?)
     for session, info in transaction_info.sessions do
         LOG(`{uuid}: Pulling {session.name}`)
         task.spawn(function()
-            local ok = pcall(Session.pull_auto, session, { [uuid] = info })
+            local ok = pcall(Session.pull_auto, (session :: Session<any>), { [uuid] = info })
             LOG(`{uuid}: STATUS {if ok then "SUCCESS" else "FAIL"}`)
             if ok == false then
                 failed += 1
@@ -89,8 +91,8 @@ local function create_transaction(success: (() -> ()), failure: (() -> ())?)
         for session, info in transaction_info.sessions do
             LOG(`{uuid}: Pulling {session.name}`)
             for _, action in (if ok == true then info.success else info.failure) :: { TransactionAction } do
-                local fn = actions.obtain_transaction_action(session._.store, action.fn)
-                Session.commit_transaction_early(session, fn, unpack(action.values))
+                local fn = actions.obtain_transaction_action((session._.store :: Store<any>), action.fn)
+                Session.commit_transaction_early((session :: Session<any>), fn, unpack(action.values))
             end
         end
         
@@ -100,8 +102,8 @@ local function create_transaction(success: (() -> ()), failure: (() -> ())?)
         for session, info in transaction_info.sessions do
             LOG(`{uuid}: Pulling {session.name}`)
             for _, action in info.failure do
-                local fn = actions.obtain_transaction_action(session._.store, action.fn)
-                Session.commit_transaction_early(session, fn, unpack(action.values))
+                local fn = actions.obtain_transaction_action((session._.store :: Store<any>), action.fn)
+                Session.commit_transaction_early((session :: Session<any>), fn, unpack(action.values))
             end
         end
 
