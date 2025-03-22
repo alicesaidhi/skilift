@@ -1,6 +1,5 @@
 local flags = require("./flags")
 local guid = require("./guid")
-local flags = require("./flags")
 local types = require("./types")
 local Session = require("./session")
 local budget = require("./budget")
