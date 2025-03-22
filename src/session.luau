@@ -39,7 +39,7 @@ local function migrate<T>(session: Session<T>, stored: StoredData<T>)
     if #migrations == #stored.migrations_performed then return false end
     LOG(`{session.name}: Performing Migration`)
     for i, migration in migrations do
-        if table.find(stored.migrations_performed, migration) then continue end
+        if table.find(stored.migrations_performed, migration.step) then continue end
         LOG(`{session.name}: Migration Step {migration.step}`)
 
         local result = migration.migrate(stored.data)
@@ -101,7 +101,7 @@ end
 
 local function update<T>(
     session: Session<T>,
-    changes: { Action },
+    changes: { { Action<any, ...any> & any } },
     pending_transactions: { [TransactionId]: TransactionData },
     stored: StoredData<T>,
     db_key_info: DataStoreKeyInfo?
@@ -278,8 +278,8 @@ local function thread<T>(session: Session<T>)
             continue
         end
         LOG("triggering auto-save for", session.name)
-        local ok, err = pcall(pull_auto, session, {}) -- silence autosave error if emitted
-        if not ok then LOG("autosave error:", err) end
+        local ok, err: string? = pcall(pull_auto, session, {}) -- silence autosave error if emitted
+        if not ok then LOG("autosave error:", err :: string) end
         if session._.why_bad then return end
     end
 end
@@ -289,7 +289,7 @@ local function patch_transaction<T, U...>(session: Session<T>, fn: Action<T, U..
 
     if flags.strict then
         for i = 1, select("#", ...) do
-            local ok, err: util.JSONError = pcall(util.check_json_valid, select(i, ...))
+            local ok, err = pcall(util.check_json_valid, select(i, ...))
 
             if ok == false then
                 THROW("strict_pass_not_json_into_action", tostring(err))
@@ -305,7 +305,7 @@ local function patch_transaction<T, U...>(session: Session<T>, fn: Action<T, U..
         b = fn(b, ...)
 
         -- check if it's valid json in strict mode
-        local ok, err: util.JSONError = pcall(util.check_json_valid, a)
+        local ok, err = pcall(util.check_json_valid, a)
 
         if ok == false then
             THROW("strict_not_json_from_action", debug.info(fn, "s"), tostring(err))
@@ -355,7 +355,7 @@ local function patch_regular<T, U...>(session: Session<T>, fn: Action<T, U...>, 
         b = fn(b, ...)
 
         -- check if it's valid json in strict mode
-        local ok, err: util.JSONError = pcall(util.check_json_valid, a)
+        local ok, err = pcall(util.check_json_valid, a)
 
         if ok == false then
             THROW("strict_not_json_from_action", debug.info(fn, "s"), tostring(err))
@@ -399,7 +399,7 @@ local function commit_transaction_early<T, U...>(session: Session<T>, fn: Action
         b = fn(b, ...)
 
         -- check if it's valid json in strict mode
-        local ok, err: util.JSONError = pcall(util.check_json_valid, a)
+        local ok, err = pcall(util.check_json_valid, a)
 
         if ok == false then
             THROW("strict_not_json_from_action", debug.info(fn, "s"), tostring(err))
