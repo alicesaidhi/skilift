@@ -14,9 +14,6 @@ type TransactionAction = types.TransactionAction
 type TransactionInfo = types.TransactionInfo
 type TransactionId = types.TransactionId
 
-local function escape_transaction()
-
-end
 
 local function create_transaction(success: (() -> ()), failure: (() -> ())?)
     local TRANSACTION_STORE = flags.datastoreservice:GetDataStore(TRANSACTION_NAME, TRANSACTION_SCOPE)
@@ -63,7 +60,7 @@ local function create_transaction(success: (() -> ()), failure: (() -> ())?)
     budget.delay_until_meets_budget("update", total + 6)
 
     -- each session needs to be manually pulled
-    local success, failed = 0, 0
+    local finished, failed = 0, 0
     for session, info in transaction_info.sessions do
         LOG(`{uuid}: Pulling {session.name}`)
         task.spawn(function()
@@ -72,18 +69,18 @@ local function create_transaction(success: (() -> ()), failure: (() -> ())?)
             if ok == false then
                 failed += 1
             end
-            if ok == true then success += 1 end
+            if ok == true then finished += 1 end
         end) 
     end
     
-    while success < total and failed == 0 do
+    while finished < total and failed == 0 do
         task.wait() -- yield until all threads finished
     end
     LOG(`{uuid}: TOTAL {total}, SUCCESS {success}, FAIL {failed}`)
 
-    if success == total then
+    if finished == total then
         -- everything has been saved, we can now mark the transaction as finished
-        local ok, err = pcall(function()
+        local ok = pcall(function()
             budget.delay_until_meets_budget("set", 1)
             TRANSACTION_STORE:SetAsync(uuid, true)
         end)
