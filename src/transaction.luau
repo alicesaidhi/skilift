@@ -11,6 +11,7 @@ local actions = require("./actions")
 local TRANSACTION_NAME = "_$SKILIFT_TRANSACTION"
 local TRANSACTION_SCOPE = "global"
 
+type TransactionAction = types.TransactionAction
 type TransactionInfo = types.TransactionInfo
 type TransactionId = types.TransactionId
 
@@ -65,7 +66,7 @@ local function create_transaction(success: (() -> ()), failure: (() -> ())?)
     -- each session needs to be manually pulled
     local success, failed = 0, 0
     for session, info in transaction_info.sessions do
-        LOG(`{uuid}: Pulling {session._name}`)
+        LOG(`{uuid}: Pulling {session.name}`)
         task.spawn(function()
             local ok = pcall(Session.pull_auto, session, { [uuid] = info })
             LOG(`{uuid}: STATUS {if ok then "SUCCESS" else "FAIL"}`)
@@ -90,8 +91,8 @@ local function create_transaction(success: (() -> ()), failure: (() -> ())?)
         LOG(`{uuid}: WRITTEN TO KEY STATUS {if ok then "SUCCESS" else "FAIL"}`)
 
         for session, info in transaction_info.sessions do
-            LOG(`{uuid}: Pulling {session._name}`)
-            for _, action in (if ok == true then info.success else info.failure) do
+            LOG(`{uuid}: Pulling {session.name}`)
+            for _, action in (if ok == true then info.success else info.failure) :: { TransactionAction } do
                 local fn = actions.obtain_transaction_action(session._.store, action.fn)
                 Session.commit_transaction_early(session, fn, unpack(action.values))
             end
@@ -101,7 +102,7 @@ local function create_transaction(success: (() -> ()), failure: (() -> ())?)
     else
         -- now that the transaction is done, we can pull all data again
         for session, info in transaction_info.sessions do
-            LOG(`{uuid}: Pulling {session._name}`)
+            LOG(`{uuid}: Pulling {session.name}`)
             for _, action in info.failure do
                 local fn = actions.obtain_transaction_action(session._.store, action.fn)
                 Session.commit_transaction_early(session, fn, unpack(action.values))

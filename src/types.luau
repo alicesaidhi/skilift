@@ -64,7 +64,7 @@ export type Session<T> = {
         datastore: DataStore,
         options: StoreOptions<T>,
         --- A list of changes that haven't been pushed yet.
-        changes: { Action },
+        changes: { { Action & any } },
         --- When the next refresh happens.
         next_save_opportunity: number,
         --- Runs to reconcile the Datastores into the data.
