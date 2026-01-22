@@ -463,6 +463,7 @@ local function commit_transaction_early<T, U...>(session: Session<T>, fn: Action
         end
 
         session._.cached.data = result
+        run_updated(session)
     end
 end
 
