@@ -105,7 +105,7 @@ local function update<T>(
     pending_transactions: { [TransactionId]: TransactionData },
     stored: StoredData<T>,
     db_key_info: DataStoreKeyInfo?
-): StoredData<T>?
+): (StoredData<T>?, { number }?)
 
     local store = session._.store
     local did_anything = false
@@ -194,11 +194,11 @@ local function pull_auto<T>(session: Session<T>, transactions: { [TransactionId]
             session._.changes = {}
             
             LOG("retrieved", value)
-            local updated_value = update(session, stored_changes, transactions, value, keyinfo)
+            local updated_value, updated_user_ids = update(session, stored_changes, transactions, value, keyinfo)
             new_data = if updated_value == nil then value else updated_value
             LOG(if updated_value ~= nil then "saved new data" else "cancelled update as no change has been made")
 
-            return updated_value
+            return updated_value, updated_user_ids
         end)
 
         LOG("FINISHED SAVE")
@@ -259,11 +259,11 @@ local function force_pull<T>(session: Session<T>)
             session._.changes = {}
             
             LOG("retrieved", value)
-            local updated_value = update(session, old_changes, {}, value, keyinfo)
+            local updated_value, updated_user_ids = update(session, old_changes, {}, value, keyinfo)
             new_data = if updated_value == nil then value else updated_value
             LOG(if updated_value ~= nil then "saved new data" else "cancelled update as no change has been made")
 
-            return updated_value
+            return updated_value, updated_user_ids
         end)
         LOG("finished")
         return new_data
